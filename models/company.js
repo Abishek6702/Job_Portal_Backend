@@ -1,0 +1,22 @@
+const mongoose = require("mongoose");
+
+const companySchema = new mongoose.Schema({
+  company_logo: String,
+  company_name: String,
+  company_type: String,
+  location: String,
+  followers_count: Number,
+  employee_count: Number,
+  site_url: String,
+  about: {
+    content: String,
+    contact_info: String,
+    stock_value: String
+  },
+  jobs: [{ type: mongoose.Schema.Types.ObjectId, ref: "Job" }],
+  people: [{ content: String, category: String }],
+  images: [{ type: String }],
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, 
+});
+
+module.exports = mongoose.model("Company", companySchema);

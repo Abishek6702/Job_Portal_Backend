@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { LessonSchema } = require("./Lesson");  
+const { Lesson } = require("./Lesson");  
 
 const CourseSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -52,6 +52,19 @@ const CourseSchema = new mongoose.Schema({
       comment: { type: String },
     },
   ],
+});
+
+// 🔁 Middleware: delete lessons when course is deleted
+CourseSchema.pre("findOneAndDelete", async function (next) {
+  const course = await this.model.findOne(this.getQuery());
+  if (course?.courseContent?.length > 0) {
+    await Promise.all(
+      course.courseContent.map(async (lessonId) => {
+        await Lesson.findOneAndDelete({ _id: lessonId }); // This will trigger lesson middleware
+      })
+    );
+  }
+  next();
 });
 
 const Course = mongoose.model("Course", CourseSchema);

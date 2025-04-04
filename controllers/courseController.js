@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 
 const Course = require("../models/Course");
+const { Lesson } = require("../models/Lesson");
+const  Video  = require("../models/Video");
 
 exports.createCourse = async (req, res) => {
   try {
@@ -90,7 +92,8 @@ exports.getCourseById = async (req, res) => {
 exports.deleteCourse = async (req, res) => {
   try {
     const { id } = req.params;
-    const course = await Course.findById(id);
+
+    const course = await Course.findById(id).populate("courseContent");
 
     if (!course) return res.status(404).json({ message: "Course not found" });
 
@@ -98,14 +101,23 @@ exports.deleteCourse = async (req, res) => {
       req.user.role !== "admin" &&
       course.createdBy.toString() !== req.user.id
     ) {
-      return res
-        .status(403)
-        .json({ message: "Unauthorized to delete this course" });
+      return res.status(403).json({ message: "Unauthorized to delete this course" });
     }
 
+    // Delete all videos inside each lesson
+    for (const lesson of course.courseContent) {
+      if (lesson.videos && lesson.videos.length > 0) {
+        await Video.deleteMany({ _id: { $in: lesson.videos } });
+      }
+      await Lesson.findByIdAndDelete(lesson._id); // ✅ this will now work
+    }
+
+    // Delete the course
     await Course.findByIdAndDelete(id);
-    res.status(200).json({ message: "Course deleted successfully" });
+
+    res.status(200).json({ message: "Course and associated lessons/videos deleted successfully" });
   } catch (error) {
+    console.error("Error deleting course:", error);
     res.status(500).json({ error: error.message });
   }
 };

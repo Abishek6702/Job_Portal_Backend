@@ -9,7 +9,7 @@ router.post('/', verifyToken, authorizeRoles('Admin', 'Instructor'), createLesso
 router.put('/:id', verifyToken, authorizeRoles('Admin', 'Instructor'), checkCourseOwnership, updateLesson);
 
 
-router.delete('/:id', verifyToken, authorizeRoles('Admin', 'Instructor'), checkCourseOwnership, deleteLesson);
+router.delete('/:id', verifyToken, authorizeRoles('Admin', 'Instructor'), deleteLesson);
 
 router.get('/course/:courseId',verifyToken,  getLessonsByCourse); 
 

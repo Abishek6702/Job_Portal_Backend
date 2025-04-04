@@ -85,32 +85,29 @@ exports.deleteLesson = async (req, res) => {
   try {
     const { id } = req.params;
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid lesson ID" });
+    }
+
     const lesson = await Lesson.findById(id);
     if (!lesson) {
       return res.status(404).json({ message: "Lesson not found" });
     }
 
-    console.log("Lesson found:", lesson);
+    // Cast ID to ObjectId for comparison
+    const objectId = new mongoose.Types.ObjectId(id);
 
-    const course = await Course.findOne({ courseContent: id });
-    console.log("Course associated with the lesson:", course);
+    const course = await Course.findOne({ courseContent: objectId });
 
     if (!course) {
-      return res
-        .status(404)
-        .json({ message: "Course associated with this lesson not found" });
+      console.log("Lesson ID:", id);
+      console.log("Course content arrays checked but no match found.");
+      return res.status(404).json({
+        message: "Course associated with this lesson not found. Check if the lesson is linked to any course.",
+      });
     }
 
-    if (!course.instructorDetails) {
-      console.error("Error: instructorDetails is missing in course");
-      return res
-        .status(500)
-        .json({ message: "Instructor ID is missing in course data" });
-    }
-
-    console.log("Course Instructor ID:", course.instructorDetails);
-    console.log("Logged-in User ID:", req.user._id);
-
+    // Auth check
     if (
       course.instructorDetails.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
@@ -120,20 +117,21 @@ exports.deleteLesson = async (req, res) => {
         .json({ message: "You are not authorized to delete this lesson" });
     }
 
+    // Remove lesson from course content
     course.courseContent = course.courseContent.filter(
-      (contentId) => !contentId.equals(id)
+      (contentId) => contentId.toString() !== id
     );
-    console.log("Updated Course Content:", course.courseContent);
     await course.save();
-    await Lesson.findByIdAndDelete(id);
 
-    res.status(200).json({ message: "Lesson deleted successfully" });
+    // Trigger cascading delete (videos) via middleware
+    await Lesson.findOneAndDelete({ _id: id });
+
+    res.status(200).json({ message: "Lesson and its videos deleted successfully" });
   } catch (error) {
-    console.error(error);
+    console.error("Delete Lesson Error:", error);
     res.status(500).json({ error: error.message });
   }
 };
-
 exports.getLessonsByCourse = async (req, res) => {
   try {
     const { courseId } = req.params;

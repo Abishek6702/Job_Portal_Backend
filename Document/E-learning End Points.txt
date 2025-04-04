@@ -118,6 +118,9 @@ PUT http://localhost:3000/api/courses/67e7915a15b7242c65dc6556
   "price": 3500
 }
 
+
+
+
                       ----------LESSONS END POINT -----------------------
 
 post http://localhost:3000/api/lessons

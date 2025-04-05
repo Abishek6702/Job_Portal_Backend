@@ -13,7 +13,9 @@ const userSchema = new mongoose.Schema({
   },
   isVerified: { type: Boolean, default: false },
   otp: { type: String },
-  otpExpiry: { type: Date }
+  otpExpiry: { type: Date },
+  enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }]
+
 });
 
 userSchema.pre('save', async function (next) {

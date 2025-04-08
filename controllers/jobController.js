@@ -1,65 +1,85 @@
 const mongoose = require("mongoose");
 const Job = require("../models/job");
-const Company = require("../models/company");
-
-
-const parseJson = (data, defaultValue = []) => {
-  try {
-    return typeof data === 'string' ? JSON.parse(data) : data;
-  } catch (error) {
-    return defaultValue;
-  }
-};
 
 exports.createJob = async (req, res) => {
   try {
-    const { companyId, companyOverview, tools, additionalBenefits, jobDescription, requirements, reportingTo, deadlineToApply } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(companyId)) {
-      return res.status(400).json({ error: "Invalid companyId" });
+    if (req.user.role !== "employer") {
+      return res.status(403).json({ message: "Only employers can create jobs" });
     }
 
-    const company = await Company.findById(companyId);
-    if (!company) return res.status(404).json({ message: "Company not found" });
-
-    if (req.user.role !== 'admin' && company.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ error: "Unauthorized to create jobs for this company" });
-    }
-
-    const jobData = {
-      companyId,
-      companyName: req.body.companyName,
-      position: req.body.position,
-      applyMethod: req.body.applyMethod,
-      location: req.body.location,
-      workplace: req.body.workplace,
-      whereYouWillDoIt: req.body.whereYouWillDoIt,
-      interviewProcess: req.body.interviewProcess,
-      reportingTo: parseJson(reportingTo, []),
-      team: req.body.team,
-      jobDescription: parseJson(jobDescription, []),
-      requirements: parseJson(requirements, []),
-      salaryRange: req.body.salaryRange,
-      tools: parseJson(tools, []),
-      additionalBenefits: parseJson(additionalBenefits, []),
-      companyOverview: parseJson(companyOverview, {}),
-      deadlineToApply,
+    const parseJson = (data, fallback) => {
+      try {
+        return typeof data === "string" ? JSON.parse(data) : data || fallback;
+      } catch (err) {
+        return fallback;
+      }
     };
 
-    const job = await Job.create(jobData);
-    await Company.findByIdAndUpdate(companyId, { $push: { jobs: job._id } });
+    const companyLogo = req.files?.["companyLogo"]?.[0]?.path || null;
+    const companyImages = req.files?.["companyImages"]?.map(file => file.path) || [];
+
+    let {
+      companyId,
+      companyName,
+      position,
+      applyMethod,
+      location,
+      workplace,
+      whereYouWillDoIt,
+      interviewProcess,
+      tools,
+      reportingTo,
+      team,
+      jobDescription,
+      requirements,
+      salaryRange,
+      additionalBenefits,
+      companyOverview,
+      deadlineToApply,
+    } = req.body;
+
+    // Parse fields if needed
+    tools = parseJson(tools, []);
+    reportingTo = parseJson(reportingTo, []);
+    jobDescription = parseJson(jobDescription, []);
+    requirements = parseJson(requirements, []);
+    additionalBenefits = parseJson(additionalBenefits, []);
+    companyOverview = parseJson(companyOverview, {});
+
+    companyOverview.companyImages = companyImages;
+
+    const job = await Job.create({
+      companyId: new mongoose.Types.ObjectId(companyId),
+      companyName,
+      position,
+      applyMethod,
+      location,
+      workplace,
+      whereYouWillDoIt,
+      interviewProcess,
+      tools,
+      reportingTo,
+      team,
+      jobDescription,
+      requirements,
+      salaryRange,
+      additionalBenefits,
+      companyOverview,
+      companyLogo,
+      deadlineToApply,
+      postedAt: new Date(),
+    });
 
     res.status(201).json(job);
   } catch (error) {
+    console.error("Create Job Error:", error.stack || error.message);
     res.status(400).json({ error: error.message });
   }
 };
 
-
-
 exports.getAllJobs = async (req, res) => {
   try {
-    const jobs = await Job.find().populate("companyId", "company_name company_logo location");
+    const jobs = await Job.find();
     res.status(200).json(jobs);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -68,7 +88,7 @@ exports.getAllJobs = async (req, res) => {
 
 exports.getJobById = async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id).populate("companyId");
+    const job = await Job.findById(req.params.id);
     if (!job) return res.status(404).json({ message: "Job not found" });
     res.status(200).json(job);
   } catch (error) {
@@ -81,67 +101,106 @@ exports.updateJob = async (req, res) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid Job ID" });
+      return res.status(400).json({ error: "Invalid job ID" });
     }
 
-    const job = await Job.findById(id).populate('companyId', 'createdBy');
-    if (!job) return res.status(404).json({ message: "Job not found" });
+    const job = await Job.findById(id);
+    if (!job) return res.status(404).json({ error: "Job not found" });
 
-    if (!job.companyId || !job.companyId.createdBy) {
-      return res.status(400).json({ error: "Invalid Company data or createdBy missing" });
+    if (req.user.role !== 'admin' && job.createdBy?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Access denied" });
     }
 
-    if (req.user.role !== 'admin' && job.companyId.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ error: "Unauthorized to update this job" });
-    }
-
-    const updateData = {
-      ...req.body,
-      reportingTo: parseJson(req.body.reportingTo, []),
-      jobDescription: parseJson(req.body.jobDescription, []),
-      requirements: parseJson(req.body.requirements, []),
-      tools: parseJson(req.body.tools, []),
-      additionalBenefits: parseJson(req.body.additionalBenefits, []),
-      companyOverview: parseJson(req.body.companyOverview, {}),
+    const parseJson = (data, fallback) => {
+      try {
+        return typeof data === "string" ? JSON.parse(data) : data || fallback;
+      } catch (err) {
+        return fallback;
+      }
     };
 
-    const updatedJob = await Job.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
-    if (!updatedJob) {
-      return res.status(500).json({ error: "Job update failed" });
-    }
+    const companyLogo = req.files?.["companyLogo"]?.[0]?.path || null;
+    const companyImages = req.files?.["companyImages"]?.map(file => file.path) || [];
+
+    let {
+      companyName,
+      position,
+      applyMethod,
+      location,
+      workplace,
+      whereYouWillDoIt,
+      interviewProcess,
+      tools,
+      reportingTo,
+      team,
+      jobDescription,
+      requirements,
+      salaryRange,
+      additionalBenefits,
+      companyOverview,
+      deadlineToApply,
+    } = req.body;
+
+    tools = parseJson(tools, []);
+    reportingTo = parseJson(reportingTo, []);
+    jobDescription = parseJson(jobDescription, []);
+    requirements = parseJson(requirements, []);
+    additionalBenefits = parseJson(additionalBenefits, []);
+    companyOverview = parseJson(companyOverview, {});
+    companyOverview.companyImages = companyImages;
+
+    const updateData = {
+      companyName,
+      position,
+      applyMethod,
+      location,
+      workplace,
+      whereYouWillDoIt,
+      interviewProcess,
+      tools,
+      reportingTo,
+      team,
+      jobDescription,
+      requirements,
+      salaryRange,
+      additionalBenefits,
+      companyOverview,
+      deadlineToApply,
+    };
+
+    if (companyLogo) updateData.companyLogo = companyLogo;
+
+    // Clean up undefined/nulls
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined || updateData[key] === null) {
+        delete updateData[key];
+      }
+    });
+
+    const updatedJob = await Job.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     res.status(200).json(updatedJob);
   } catch (error) {
-    console.error("Update Error:", error.message);
+    console.error("Update Job Error:", error.stack || error.message);
     res.status(500).json({ error: error.message });
   }
 };
 
 exports.deleteJob = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid Job ID" });
-    }
-
-    const job = await Job.findById(id).populate('companyId', 'createdBy');
+    const job = await Job.findById(req.params.id);
     if (!job) return res.status(404).json({ message: "Job not found" });
 
-    if (!job.companyId || !job.companyId.createdBy) {
-      return res.status(400).json({ error: "Invalid Company data or createdBy missing" });
+    if (req.user.role !== 'admin' && job.createdBy?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
-    if (req.user.role !== 'admin' && job.companyId.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ error: "Unauthorized to delete this job" });
-    }
-
-    await Job.findByIdAndDelete(id);
-    await Company.findByIdAndUpdate(job.companyId._id, { $pull: { jobs: job._id } });
-
+    await Job.findByIdAndDelete(req.params.id);
     res.status(200).json({ message: "Job deleted successfully" });
   } catch (error) {
-    console.error("Delete Error:", error.message);
     res.status(500).json({ error: error.message });
   }
 };

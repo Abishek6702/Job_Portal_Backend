@@ -26,6 +26,7 @@ exports.createCompany = async (req, res) => {
       followers_count: req.body.followers_count,
       employee_count: req.body.employee_count,
       site_url: req.body.site_url,
+      ratings: req.body.ratings,
       about,
       jobs,
       people,
@@ -43,7 +44,7 @@ exports.createCompany = async (req, res) => {
 
 exports.getAllCompanies = async (req, res) => {
   try {
-    const companies = await Company.find().populate("jobs", "position location salaryRange");
+    const companies = await Company.find().populate("jobs");
     res.status(200).json(companies);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -124,6 +125,7 @@ exports.updateCompany = async (req, res) => {
         followers_count: req.body.followers_count,
         employee_count: req.body.employee_count,
         site_url: req.body.site_url,
+        ratings: req.body.ratings,
         about,
         people,
       };

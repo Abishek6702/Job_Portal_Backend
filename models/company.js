@@ -8,6 +8,7 @@ const companySchema = new mongoose.Schema({
   followers_count: Number,
   employee_count: Number,
   site_url: String,
+  ratings: String,
   about: {
     content: String,
     contact_info: String,

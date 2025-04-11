@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Job = require("../models/job");
+const Company = require("../models/company");
 
 exports.createJob = async (req, res) => {
   try {
@@ -69,6 +70,11 @@ exports.createJob = async (req, res) => {
       deadlineToApply,
       postedAt: new Date(),
     });
+    await Company.findByIdAndUpdate(
+      companyId,
+      { $push: { jobs: job._id } },
+      { new: true }
+    );
 
     res.status(201).json(job);
   } catch (error) {

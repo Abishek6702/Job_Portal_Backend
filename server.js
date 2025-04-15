@@ -15,6 +15,9 @@ const courseRoutes = require("./routes/courseRoutes");
 const lessonRoutes = require("./routes/lessonRoutes");
 const videoRoutes = require("./routes/videoRoutes");
 const enrollmentRoutes = require("./routes/enrollmentRoutes");
+const onboardingRoutes = require("./routes/onboardingRoutes");
+
+
 
 const app = express();
 
@@ -37,6 +40,7 @@ app.use("/api/courses", courseRoutes);
 app.use("/api/lessons", lessonRoutes);
 app.use("/api/videos", videoRoutes);
 app.use("/api/enrollment", enrollmentRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 

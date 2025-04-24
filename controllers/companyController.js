@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Company = require("../models/company");
 const Job = require("../models/job");
+const User = require("../models/User")
 
 exports.createCompany = async (req, res) => {
   try {
@@ -33,6 +34,11 @@ exports.createCompany = async (req, res) => {
       images,
       createdBy: req.user._id,
     });
+    const user = await User.findById(req.user._id);
+    if (user) {
+      user.firstTimeLogin = false; // Update to false after company post
+      await user.save();
+    }
 
     await Job.updateMany({ _id: { $in: jobs } }, { companyId: company._id });
 

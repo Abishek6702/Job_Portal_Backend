@@ -36,7 +36,7 @@ Job_Listing
     tools:["Node.js","MongoDB","React"]
     additionalBenefits:["Health Insurance","Stock Options"]
     jobDescription:[{ "title": "About the Role", "content": ["Develop applications", "Fix bugs"] }, { "title": "Key Responsibilities", "content": ["Write clean code", "Collaborate with teams"] }]
-    requirements:[{ "title": "Must Have", "content": ["5+ years experience", "Expert in Node.js"] }]
+    requirements:[{ "title": "Must Have", "content": ["5+ ye ars experience", "Expert in Node.js"] }]
     companyOverview:{ "founded": "2010", "type": "Private", "industry": "Software", "sector": "Tech", "revenue": "500M", "size": "200-300 employees" }
     deadlineToApply:2025-04-01
     companyLogo:

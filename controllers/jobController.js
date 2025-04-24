@@ -5,7 +5,9 @@ const Company = require("../models/company");
 exports.createJob = async (req, res) => {
   try {
     if (req.user.role !== "employer") {
-      return res.status(403).json({ message: "Only employers can create jobs" });
+      return res
+        .status(403)
+        .json({ message: "Only employers can create jobs" });
     }
 
     const parseJson = (data, fallback) => {
@@ -17,7 +19,8 @@ exports.createJob = async (req, res) => {
     };
 
     const companyLogo = req.files?.["companyLogo"]?.[0]?.path || null;
-    const companyImages = req.files?.["companyImages"]?.map(file => file.path) || [];
+    const companyImages =
+      req.files?.["companyImages"]?.map((file) => file.path) || [];
 
     let {
       companyId,
@@ -113,7 +116,16 @@ exports.updateJob = async (req, res) => {
     const job = await Job.findById(id);
     if (!job) return res.status(404).json({ error: "Job not found" });
 
-    if (req.user.role !== 'admin' && job.createdBy?.toString() !== req.user._id.toString()) {
+    // Fetch the company to get the createdBy
+    const company = await Company.findById(job.companyId);
+    if (!company) {
+      return res.status(404).json({ error: "Company not found for this job" });
+    }
+
+    if (
+      req.user.role !== "admin" &&
+      company.createdBy?.toString() !== req.user._id.toString()
+    ) {
       return res.status(403).json({ error: "Access denied" });
     }
 
@@ -126,7 +138,8 @@ exports.updateJob = async (req, res) => {
     };
 
     const companyLogo = req.files?.["companyLogo"]?.[0]?.path || null;
-    const companyImages = req.files?.["companyImages"]?.map(file => file.path) || [];
+    const companyImages =
+      req.files?.["companyImages"]?.map((file) => file.path) || [];
 
     let {
       companyName,
@@ -177,7 +190,7 @@ exports.updateJob = async (req, res) => {
     if (companyLogo) updateData.companyLogo = companyLogo;
 
     // Clean up undefined/nulls
-    Object.keys(updateData).forEach(key => {
+    Object.keys(updateData).forEach((key) => {
       if (updateData[key] === undefined || updateData[key] === null) {
         delete updateData[key];
       }
@@ -195,17 +208,36 @@ exports.updateJob = async (req, res) => {
   }
 };
 
+
 exports.deleteJob = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id);
     if (!job) return res.status(404).json({ message: "Job not found" });
 
-    if (req.user.role !== 'admin' && job.createdBy?.toString() !== req.user._id.toString()) {
+    // Fetch the related company
+    const company = await Company.findById(job.companyId);
+    if (!company) {
+      return res.status(404).json({ message: "Associated company not found" });
+    }
+
+    // Check permission
+    if (
+      req.user.role !== 'admin' &&
+      company.createdBy?.toString() !== req.user._id.toString()
+    ) {
       return res.status(403).json({ message: "Access denied" });
     }
 
+    // Delete the job
     await Job.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Job deleted successfully" });
+
+    // Remove job ID from company.jobs array
+    company.jobs = company.jobs.filter(
+      (jobId) => jobId.toString() !== req.params.id
+    );
+    await company.save();
+
+    res.status(200).json({ message: "Job deleted and reference removed from company" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

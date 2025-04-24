@@ -8,6 +8,7 @@ const {
 } = require("../controllers/jobController");
 const upload = require("../middlewares/upload");
 const { verifyToken, authorizeRoles } = require("../middlewares/authMiddleware");
+const { toggleSaveJob, getSavedJobs } = require('../controllers/savedJobsController');
 
 const router = express.Router();
 
@@ -26,8 +27,11 @@ router.post(
 
 router.get("/", verifyToken, getAllJobs);
 
-
+router.get('/saved', verifyToken, getSavedJobs);
 router.get("/:id", verifyToken, getJobById);
+
+
+router.post('/toggle-save-job',verifyToken, toggleSaveJob);
 
 
 router.delete(
